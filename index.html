@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
@@ -7,26 +8,31 @@
     <style>
         body { font-family: sans-serif; padding: 2em; text-align: center; }
         button { padding: 1em 2em; font-size: 1.2em; }
-        #status { margin-top: 1em; font-weight: bold; }
+        #status { margin-top: 1em; font-weight: bold; white-space: pre-wrap; }
     </style>
 </head>
 <body>
     <h1>📍 和德打卡系統</h1>
     <p>請點擊下方按鈕開始位置驗證並進行打卡</p>
     <button onclick="handleClockIn()">開始打卡</button>
+    
+    <div style="margin-top: 1em;">
+        <input type="text" id="note" placeholder="輸入備註，例如：在公司大門口" style="padding: 0.5em; width: 80%; font-size: 1em;" />
+    </div>
     <div id="status"></div>
+    
 
     <script>
-        const ALLOWED_LAT = 25.04504; // 公司緯度
-        const ALLOWED_LON = 121.46676; // 公司經度
-        const ALLOWED_DISTANCE_KM = 0.1; // 容許範圍 (100 公尺)
+        const ALLOWED_LAT = 25.04504;
+        const ALLOWED_LON = 121.46676;
+        const ALLOWED_DISTANCE_KM = 0.1;
 
-        const ODOO_URL = "https://hotech.odoo.com"; // <-- 請換成你的網址
-        const ODOO_API_KEY = "b59ac3b1a14a7ef6b143302ba951cbc18f955f58"; // <-- 請換成你的 API Token
-        const EMPLOYEE_ID = 1; // <-- 員工 ID
+        const ODOO_URL = "https://hotech.odoo.com";
+        const ODOO_API_KEY = "b59ac3b1a14a7ef6b143302ba951cbc18f955f58";
+        const EMPLOYEE_ID = 1;
 
         function getDistance(lat1, lon1, lat2, lon2) {
-            const R = 6371; // 地球半徑 km
+            const R = 6371;
             const dLat = (lat2 - lat1) * Math.PI / 180;
             const dLon = (lon2 - lon1) * Math.PI / 180;
             const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -46,20 +52,85 @@
                 const lat = pos.coords.latitude;
                 const lon = pos.coords.longitude;
                 const dist = getDistance(lat, lon, ALLOWED_LAT, ALLOWED_LON);
-                
+
                 if (dist <= ALLOWED_DISTANCE_KM) {
-                    document.getElementById("status").textContent = `✅ 位置確認 (${lat.toFixed(5)}, ${lon.toFixed(5)}，距離: ${(dist*1000).toFixed(1)} 公尺)`;
+                    document.getElementById("status").textContent = 
+                        `✅ 位置確認 (${lat.toFixed(5)}, ${lon.toFixed(5)}，距離: ${(dist*1000).toFixed(1)} 公尺)`;
                     await sendAttendance();
                 } else {
-                    document.getElementById("status").textContent = `❌ 你不在打卡區域內 (目前距離 ${(dist*1000).toFixed(1)} 公尺)`;
+                    document.getElementById("status").textContent = 
+                        `❌ 你不在打卡區域內 (目前距離 ${(dist*1000).toFixed(1)} 公尺)`;
                 }
             }, (err) => {
                 alert("定位失敗: " + err.message);
             });
         }
 
-        async function sendAttendance() {
-           
+        
+async function sendAttendance() {
+    try {
+        const resCheck = await fetch(`${ODOO_URL}/api/hr.attendance/check`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${ODOO_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                employee_id: EMPLOYEE_ID
+            })
+        });
+
+        const checkResult = await resCheck.json();
+        const actionType = checkResult.action === 'sign_in' ? 'check_in' : 'check_out';
+
+        const res = await fetch(`${ODOO_URL}/api/hr.attendance`, {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${ODOO_API_KEY}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                employee_id: EMPLOYEE_ID,
+                [actionType]: new Date().toISOString(),
+                note: document.getElementById("note").value
+            })
+        });
+
+        if (res.ok) {
+            const actionText = actionType === 'check_in' ? '上班' : '下班';
+            document.getElementById("status").textContent += `\n🎉 ${actionText}打卡成功！`;
+        } else {
+            const err = await res.json();
+            document.getElementById("status").textContent += `\n❌ 打卡失敗: ${err.error?.message || '未知錯誤'}`;
+        }
+    } catch (e) {
+        document.getElementById("status").textContent += `\n❌ 發生錯誤: ${e.message}`;
+    }
+}
+
+            try {
+                const res = await fetch(`${ODOO_URL}/api/hr.attendance`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${ODOO_API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        employee_id: EMPLOYEE_ID,
+                        check_in: new Date().toISOString()
+                    })
+                });
+
+                if (res.ok) {
+                    document.getElementById("status").textContent += "\n🎉 打卡成功！";
+                } else {
+                    const err = await res.json();
+                    document.getElementById("status").textContent += 
+                        `\n❌ 打卡失敗: ${err.error?.message || '未知錯誤'}`;
+                }
+            } catch (e) {
+                document.getElementById("status").textContent += `\n❌ 發生錯誤: ${e.message}`;
+            }
         }
     </script>
 </body>
