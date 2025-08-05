@@ -59,28 +59,7 @@
         }
 
         async function sendAttendance() {
-            try {
-                const res = await fetch(`${ODOO_URL}/api/hr.attendance`, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${ODOO_API_KEY}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        employee_id: EMPLOYEE_ID,
-                        check_in: new Date().toISOString()
-                    })
-                });
-
-                if (res.ok) {
-                    document.getElementById("status").textContent += "\n🎉 打卡成功！";
-                } else {
-                    const err = await res.json();
-                    document.getElementById("status").textContent += `\n❌ 打卡失敗: ${err.error.message}`;
-                }
-            } catch (e) {
-                document.getElementById("status").textContent += `\n❌ 發生錯誤: ${e.message}`;
-            }
+           
         }
     </script>
 </body>
