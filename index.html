@@ -17,13 +17,13 @@
     <div id="status"></div>
 
     <script>
-        const ALLOWED_LAT = 25.045121510407434; // 公司緯度
-        const ALLOWED_LON = 121.46684202390492; // 公司經度
-        const ALLOWED_DISTANCE_KM = 0.05; // 容許範圍 (50 公尺)
+        const ALLOWED_LAT = 25.04504; // 公司緯度
+        const ALLOWED_LON = 121.46676; // 公司經度
+        const ALLOWED_DISTANCE_KM = 0.1; // 容許範圍 (100 公尺)
 
         const ODOO_URL = "https://hotech.odoo.com"; // <-- 請換成你的網址
         const ODOO_API_KEY = "b59ac3b1a14a7ef6b143302ba951cbc18f955f58"; // <-- 請換成你的 API Token
-        const EMPLOYEE_ID = 041093629672; // <-- 員工 ID
+        const EMPLOYEE_ID = 1; // <-- 員工 ID
 
         function getDistance(lat1, lon1, lat2, lon2) {
             const R = 6371; // 地球半徑 km
