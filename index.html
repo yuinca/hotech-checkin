@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>位置驗證打卡系統</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; padding: 2em; text-align: center; }
+        button { padding: 1em 2em; font-size: 1.2em; }
+        #status { margin-top: 1em; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>📍 和德打卡系統</h1>
+    <p>請點擊下方按鈕開始位置驗證並進行打卡</p>
+    <button onclick="handleClockIn()">開始打卡</button>
+    <div id="status"></div>
+
+    <script>
+        const ALLOWED_LAT = 25.0340; // 公司緯度
+        const ALLOWED_LON = 121.5645; // 公司經度
+        const ALLOWED_DISTANCE_KM = 0.05; // 容許範圍 (50 公尺)
+
+        const ODOO_URL = "https://yourcompany.odoo.com"; // <-- 請換成你的網址
+        const ODOO_API_KEY = "your_api_token_here"; // <-- 請換成你的 API Token
+        const EMPLOYEE_ID = 12; // <-- 員工 ID
+
+        function getDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371; // 地球半徑 km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                      Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            return R * c;
+        }
+
+        function handleClockIn() {
+            document.getElementById("status").textContent = "正在取得位置...";
+            if (!navigator.geolocation) {
+                alert("您的瀏覽器不支援 GPS 定位");
+                return;
+            }
+            navigator.geolocation.getCurrentPosition(async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const dist = getDistance(lat, lon, ALLOWED_LAT, ALLOWED_LON);
+                
+                if (dist <= ALLOWED_DISTANCE_KM) {
+                    document.getElementById("status").textContent = `✅ 位置確認 (${lat.toFixed(5)}, ${lon.toFixed(5)}，距離: ${(dist*1000).toFixed(1)} 公尺)`;
+                    await sendAttendance();
+                } else {
+                    document.getElementById("status").textContent = `❌ 你不在打卡區域內 (目前距離 ${(dist*1000).toFixed(1)} 公尺)`;
+                }
+            }, (err) => {
+                alert("定位失敗: " + err.message);
+            });
+        }
+
+        async function sendAttendance() {
+            try {
+                const res = await fetch(`${ODOO_URL}/api/hr.attendance`, {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${ODOO_API_KEY}`,
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        employee_id: EMPLOYEE_ID,
+                        check_in: new Date().toISOString()
+                    })
+                });
+
+                if (res.ok) {
+                    document.getElementById("status").textContent += "\n🎉 打卡成功！";
+                } else {
+                    const err = await res.json();
+                    document.getElementById("status").textContent += `\n❌ 打卡失敗: ${err.error.message}`;
+                }
+            } catch (e) {
+                document.getElementById("status").textContent += `\n❌ 發生錯誤: ${e.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
